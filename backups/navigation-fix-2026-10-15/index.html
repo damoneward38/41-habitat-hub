@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HABITAT HUB — Ecosystem Planner</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0c1110;color:#e9f4ee;min-height:100vh}
+header{background:#0f151a;border-bottom:1px solid #1c2c26;padding:16px 24px;display:flex;align-items:center;gap:14px}
+.logo{width:36px;height:36px;border-radius:50%;background:conic-gradient(from 0deg,#3ddc84,#00b4d8,#f59e0b,#3ddc84);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
+h1{font-size:19px;margin:0}h1 small{color:#8fafa0;font-size:10px;display:block;letter-spacing:2px}
+.clim{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:#8fafa0}
+.wrap{max-width:1120px;margin:0 auto;padding:22px}
+.clim-select{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+button{background:#15201c;border:1px solid #22362e;color:#cdexd9;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;transition:.12s}
+button:hover{border-color:#3ddc84}
+button.cl{background:#15201c}
+button.cl.active{background:linear-gradient(135deg,#0a8a4a,#00b4d8);border-color:#3ddc84;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.eco{background:#0e1518;border:1px solid #1c2c26;border-radius:14px;padding:16px;transition:.2s}
+.eco .ehead{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.eco .eicon{font-size:28px}
+.eco h3{margin:0;font-size:15px}.eco .efeed{font-size:11px;color:#8fafa0;margin-top:2px}
+.viab{height:8px;background:#1c2c26;border-radius:5px;overflow:hidden;margin:10px 0}
+.viab i{display:block;height:100%;border-radius:5px;transition:width .5s}
+.sp{background:#0b1214;border:1px solid #182820;border-radius:8px;padding:8px 10px;margin-top:6px;display:flex;align-items:center;gap:8px;font-size:12px}
+.sp .sicon{font-size:16px}
+.sp .sname{flex:1;font-weight:600}
+.sp .task{background:#15201c;border:1px solid #22362e;color:#8fafa0;border-radius:6px;padding:3px 8px;font-size:10px;border-style:dashed;background:none}
+.sp .rmv{background:none;border:none;color:#3a4a40;cursor:pointer;font-size:14px}
+.sp .rmv:hover{color:#f87171}
+.sp:hover .task{display:inline-block}
+.addspec{display:flex;gap:6px;margin-top:8px;align-items:center}
+.addspec input{flex:1;background:#0b1214;border:1px solid #1c2c26;border-radius:7px;color:#e9f4ee;padding:6px 10px;font-size:12px}
+.addspec input:focus{outline:none;border-color:#3ddc84}
+.addspec select{background:#0b1214;border:1px solid #1c2c26;color:#e9f4ee;border-radius:7px;padding:6px;font-size:12px}
+.empty{color:#8fafa0;text-align:center;padding:30px;font-size:13px}
+.side{position:sticky;top:80px}
+.name{font-size:12px;color:#8fafa0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+canvas#compat{width:100%;height:140px}
+.legend{font-size:11px;color:#8fafa0;margin-top:8px;line-height:1.7}
+</style></head>
+<body>
+<header><div class="logo">▣</div><h1>HABITAT HUB<small>ECOSYSTEM PLANNER</small></h1>
+<div class="clim">climate · <span style="color:#3ddc84" id="climName">Temperate</span></div></header>
+<div class="wrap">
+<div class="clim-select" id="climSel"></div>
+<div class="grid" id="grid"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const CLIMATES=[
+ {id:'Temperate',icon:'🌤',f:'mild 4-season'},
+ {id:'Tropical',icon:'🌴',f:'humid 29°C'},
+ {id:'Arid',icon:'🏜',f:'dry <200mm yr'},
+ {id:'Arctic',icon:'❄',f:'permafrost -18°C'},
+];
+const ECOMAP={
+ Temperate:{orchards:{icon:'🌳',compat:{Oak:1,TemperateFlower:1,Apple:0.9,Sheep:0.8,Bee:0.9}},wetlands:{icon:'🪷',compat:{Frog:1,Bee:0.7,Sheep:0.4,Reed:0.9}},meadows:{icon:'🌾',compat:{Sheep:1,Bee:0.8,Oak:0.7,TemperateFlower:0.9}}},
+ Tropical:{rainforest:{icon:'🌳',compat:{Sloth:1,Toucan:1,Orchid:0.9,WaterLily:0.7,Frog:0.8}},'coral-reef':{icon:'🪸',compat:{Clownfish:1,WaterLily:0.5,Sloth:0.1,Toucan:0.3}},mangrove:{icon:'🌱',compat:{Crab:1,Frog:0.9,Toucan:0.7,Clownfish:0.4}}},
+ Arid:{desert:{icon:'🏜',compat:{Cactus:1,Fennec:1,SandWorm:0.8,TemperateFlower:0.2}},oasis:{icon:'💧',compat:{Palm:1,Cactus:0.8,Frog:0.5,Bee:0.7}},badlands:{icon:'⛰',compat:{Fennec:1,SandWorm:0.9,Cactus:0.8,Orchid:0.1}}},
+ Arctic:{tundra:{icon:'🌨',compat:{PolarBear:1,Reindeer:0.9,TemperateFlower:0.2,Bee:0.3}},'ice-shelf':{icon:'🧊',compat:{Penguin:1,PolarBear:0.6,Clownfish:0.2,Reindeer:0.5}},'glacier-lake':{icon:'🏔',compat:{Trout:1,Penguin:0.6,WaterLily:0.2,Frog:0.3}}},
+};
+const SPECIES={Oak:'🌳',Apple:'🍎',TemperateFlower:'🌼',Sheep:'🐑',Bee:'🐝',Frog:'🐸',Reed:'🌿',Sloth:'🦥',Toucan:'🐦',Orchid:'🌺',WaterLily:'🪷',Clownfish:'🐠',Crab:'🦀',Cactus:'🌵',Fennec:'🦊',SandWorm:'🐛',Palm:'🌴',PolarBear:'🐻',Reindeer:'🦌',Penguin:'🐧',Trout:'🐟'};
+
+let climate=localStorage.getItem('hb_clim')||'Temperate';
+let data=store();
+
+function store(){try{return JSON.parse(localStorage.getItem('hb_data'))||seed()}catch{return seed()}}
+function save(){localStorage.setItem('hb_data',JSON.stringify(data))}
+function seed(){
+  return {
+    Temperate:{orchards:{species:['Apple','Sheep','Bee']},wetlands:{species:['Frog','Reed']},meadows:{species:['Sheep','TemperateFlower']}},
+    Tropical:{rainforest:{species:['Sloth','Toucan','Orchid']},'coral-reef':{species:['Clownfish']},mangrove:{species:['Crab']}},
+    Arid:{desert:{species:['Cactus','Fennec']},oasis:{species:['Palm','Bee']},badlands:{species:['SandWorm']}},
+    Arctic:{tundra:{species:['Reindeer']},'ice-shelf':{species:['Penguin']},'glacier-lake':{species:['Trout']}},
+  };
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+function renderClim(){
+  $('climSel').innerHTML=CLIMATES.map(c=>`<button class="cl${c.id===climate?' active':''}" data-cl="${c.id}">${c.icon} ${c.id}</button>`).join('');
+  $('climName').textContent=climate;
+  $('climName').style.color={
+    Temperate:'#3ddc84',Tropical:'#22d3ee',Arid:'#f59e0b',Arctic:'#a5d8ff'}[climate];
+}
+
+function viability(cf,sp){
+  const c=cf[sp];
+  if(c===undefined)return 0.55;
+  return c;
+}
+
+function renderEco(ecoName,cf,spList){
+  const target=cf[ecoName];
+  const div=document.createElement('div');div.className='eco';
+  const viab=spList.length?Math.round(spList.reduce((a,s)=>a+viability(target,s),0)/spList.length*100):0;
+  const vcol=viab>=75?'#3ddc84':viab>=45?'#f59e0b':'#f87171';
+  div.style.borderColor=viab>=45?`${vcol}44`:'';
+  div.innerHTML=`<div class="ehead"><div class="eicon">${target.icon}</div>
+<div><h3>${esc(ecoName)}</h3><div class="efeed">${esc(target.feed||''+(target._f||''))}</div></div>
+<span style="margin-left:auto;color:${vcol};font-weight:700;font-size:12px">${viab}%</span></div>
+<div class="viab"><i style="width:${viab}%;background:${vcol}"></i></div>
+<div id="sp-${esc(ecoName).replace(/\W/g,'')}">${spList.map((sp,i)=>`<div class="sp"><span class="sicon">${SPECIES[sp]||'🌿'}</span><span class="sname">${esc(sp)}</span>
+<button class="task" data-eco="${esc(ecoName)}" data-sp="${esc(sp)}" title="remove">✕</button></div>`).join('')}</div>
+<div class="addspec">
+<input class="sp-in" placeholder="add species…">
+<select class="sp-sel">${Object.keys(SPECIES).map(s=>`<option>${esc(s)}</option>`).join('')}</select>
+<button class="sp-add" data-eco="${esc(ecoName)}">+</button>
+</div>`;
+  div.querySelector('.sp-add').onclick=()=>{
+    const v=div.querySelector('.sp-in').value.trim();
+    const sp=div.querySelector('.sp-sel').value;
+    const name=v||sp;
+    const arr=data[climate][ecoName].species||(data[climate][ecoName].species=[]);
+    if(!arr.includes(name)){arr.push(name);save();render();}
+  };
+  div.querySelectorAll('.task').forEach(btn=>{
+    btn.onclick=()=>{const arr=data[climate][ecoName].species||[];const i=arr.indexOf(btn.dataset.sp);if(i>-1)arr.splice(i,1);save();render();};
+  });
+  return div;
+}
+
+function render(){
+  renderClim();
+  const g=$('grid');g.innerHTML='';
+  const cf=ECOMAP[climate];
+  const plan=data[climate]||{};
+  Object.keys(cf).forEach(ecoName=>{
+    const ent=plan[ecoName]||{species:[]};
+  g.appendChild(renderEco(ecoName,cf,ent.species||[]));
+  });
+  if(!data[climate]){data[climate]=seed()[climate];save();}
+}
+$('climSel').onclick=e=>{
+  const b=e.target.closest('.cl');if(!b)return;
+  climate=b.dataset.cl;
+  if(!data[climate]){data[climate]=seed()[climate];save();}
+  localStorage.setItem('hb_clim',climate);
+  render();
+};
+render();
+</script>
+</body></html>
